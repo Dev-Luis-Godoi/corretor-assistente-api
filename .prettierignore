@@ -1,0 +1,8 @@
+dist
+coverage
+node_modules
+src/generated
+package-lock.json
+.agents
+.claude
+.windsurf

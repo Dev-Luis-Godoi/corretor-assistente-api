@@ -1,0 +1,218 @@
+import { afterAll, describe, expect, it } from "vitest";
+
+import { buildApp } from "@/app.js";
+import { UserRole } from "@/generated/prisma/enums.js";
+
+const app = buildApp();
+
+afterAll(async () => {
+  await app.close();
+});
+
+async function authenticatedCookie() {
+  await app.ready();
+
+  const token = app.jwt.sign(
+    {
+      organizationId: "00000000-0000-4000-8000-000000000001",
+      role: UserRole.OWNER,
+    },
+    {
+      sub: "00000000-0000-4000-8000-000000000002",
+    },
+  );
+
+  return `accessToken=${token}`;
+}
+
+describe("application infrastructure", () => {
+  it("reports its health", async () => {
+    const response = await app.inject({ method: "GET", url: "/health" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ status: "ok" });
+  });
+
+  it("validates registration input", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        organizationName: "A",
+        name: "A",
+        email: "invalid-email",
+        password: "short",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates login input", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        email: "invalid-email",
+        password: "",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("protects the current user endpoint", async () => {
+    const response = await app.inject({ method: "GET", url: "/auth/me" });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("protects lead endpoints", async () => {
+    const response = await app.inject({ method: "GET", url: "/leads" });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates lead creation input", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/leads",
+      headers: { cookie: await authenticatedCookie() },
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates lead listing filters", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/leads?page=0",
+      headers: { cookie: await authenticatedCookie() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates lead stage update input", async () => {
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/leads/not-a-uuid/stage",
+      headers: { cookie: await authenticatedCookie() },
+      payload: {
+        stageId: "00000000-0000-4000-8000-000000000003",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("protects WhatsApp conversation endpoints", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/whatsapp/conversations",
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates conversation listing filters", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/whatsapp/conversations?page=0",
+      headers: { cookie: await authenticatedCookie() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates conversation identifiers", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/whatsapp/conversations/not-a-uuid",
+      headers: { cookie: await authenticatedCookie() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates message listing filters", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/whatsapp/conversations/00000000-0000-4000-8000-000000000003/messages?limit=0",
+      headers: { cookie: await authenticatedCookie() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("protects pipeline endpoints", async () => {
+    const response = await app.inject({ method: "GET", url: "/pipeline/stages" });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates pipeline stage creation", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/pipeline/stages",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { name: "A", color: "blue" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates duplicate pipeline stage IDs when reordering", async () => {
+    const stageId = "00000000-0000-4000-8000-000000000003";
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/pipeline/stages/reorder",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { stageIds: [stageId, stageId] },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("protects contact endpoints", async () => {
+    const response = await app.inject({ method: "GET", url: "/contacts" });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates contact creation", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/contacts",
+      headers: { cookie: await authenticatedCookie() },
+      payload: {
+        phone: "invalid-phone",
+        organizationId: "00000000-0000-4000-8000-000000000099",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("does not expose CORS credentials to an untrusted origin", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: { origin: "https://malicious.example" },
+    });
+
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+});
