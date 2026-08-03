@@ -12,7 +12,12 @@ export class ResendEmailService {
     const safeName = escapeHtml(input.name);
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": input.idempotencyKey },
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": input.idempotencyKey,
+        "User-Agent": "corretor-assistente-api/1.0",
+      },
       body: JSON.stringify({
         from: `Corretor Assistente <${env.RESEND_FROM_EMAIL}>`,
         to: [input.email],
