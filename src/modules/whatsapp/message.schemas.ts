@@ -12,5 +12,7 @@ export const listMessagesQuerySchema = z.object({
   direction: z.enum(MessageDirection).optional(),
   type: z.enum(MessageType).optional(),
 });
+export const sendTextMessageSchema = z.object({ content: z.string().trim().min(1).max(4_096) }).strict();
 
 export type ListMessagesQuery = z.infer<typeof listMessagesQuerySchema>;
+export type SendTextMessageInput = z.infer<typeof sendTextMessageSchema>;

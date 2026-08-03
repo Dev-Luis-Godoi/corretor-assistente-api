@@ -7,9 +7,11 @@ import { env } from "@/config/env.js";
 import { prisma } from "@/infra/database/prisma.js";
 import { authRoutes } from "@/modules/auth/routes.js";
 import { contactRoutes } from "@/modules/contacts/contact.routes.js";
+import { dashboardRoutes } from "@/modules/dashboard/dashboard.routes.js";
 import { leadRoutes } from "@/modules/leads/routes.js";
 import { pipelineRoutes } from "@/modules/pipelines/pipeline.routes.js";
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.routes.js";
+import { evolutionWebhookRoutes } from "@/modules/whatsapp/evolution-webhook.routes.js";
 import { errorHandler } from "@/shared/http/error-handler.js";
 
 export function buildApp() {
@@ -41,9 +43,11 @@ export function buildApp() {
 
   app.register(authRoutes, { prefix: "/auth" });
   app.register(contactRoutes, { prefix: "/contacts" });
+  app.register(dashboardRoutes, { prefix: "/dashboard" });
   app.register(leadRoutes, { prefix: "/leads" });
   app.register(pipelineRoutes, { prefix: "/pipeline" });
   app.register(whatsappRoutes, { prefix: "/whatsapp" });
+  app.register(evolutionWebhookRoutes, { prefix: "/webhooks/evolution" });
   app.get("/health", () => {
     return {
       status: "ok",

@@ -69,6 +69,23 @@ describe("application infrastructure", () => {
     expect(response.statusCode).toBe(401);
   });
 
+  it("clears the authentication cookie on logout", async () => {
+    const response = await app.inject({ method: "POST", url: "/auth/logout" });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["set-cookie"]).toContain("accessToken=;");
+  });
+
+  it("protects the dashboard summary endpoint", async () => {
+    const response = await app.inject({ method: "GET", url: "/dashboard/summary" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates password reset input", async () => {
+    const response = await app.inject({ method: "POST", url: "/auth/reset-password", payload: { token: "short", password: "short" } });
+    expect(response.statusCode).toBe(400);
+  });
+
   it("protects lead endpoints", async () => {
     const response = await app.inject({ method: "GET", url: "/leads" });
 
@@ -152,6 +169,16 @@ describe("application infrastructure", () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates conversation identifier when sending a message", async () => {
+    const response = await app.inject({ method: "POST", url: "/whatsapp/conversations/not-a-uuid/messages", headers: { cookie: await authenticatedCookie() }, payload: { content: "Olá" } });
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("protects Evolution webhook configuration", async () => {
+    const response = await app.inject({ method: "POST", url: "/whatsapp/accounts/00000000-0000-4000-8000-000000000001/configure-evolution" });
+    expect(response.statusCode).toBe(401);
   });
 
   it("protects pipeline endpoints", async () => {

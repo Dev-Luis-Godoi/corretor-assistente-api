@@ -3,7 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { env } from "@/config/env.js";
 
 import type { AuthUser } from "./auth.types.js";
-import { loginSchema, registerSchema } from "./schemas.js";
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from "./schemas.js";
 import type { AuthService } from "./service.js";
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -33,6 +33,27 @@ export class AuthController {
     const user = await this.authService.me(request.user.sub);
 
     return reply.send({ user });
+  }
+
+  async logout(_request: FastifyRequest, reply: FastifyReply) {
+    reply.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+
+    return reply.status(204).send();
+  }
+
+  async forgotPassword(request: FastifyRequest, reply: FastifyReply) {
+    await this.authService.requestPasswordReset(forgotPasswordSchema.parse(request.body));
+    return reply.send({ message: "If the account exists, reset instructions will be sent" });
+  }
+
+  async resetPassword(request: FastifyRequest, reply: FastifyReply) {
+    await this.authService.resetPassword(resetPasswordSchema.parse(request.body));
+    return reply.status(204).send();
   }
 
   private async setAccessToken(reply: FastifyReply, user: AuthUser) {

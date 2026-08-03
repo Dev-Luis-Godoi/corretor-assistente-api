@@ -12,5 +12,10 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(72),
 });
 
+export const forgotPasswordSchema = z.object({ email: z.email().trim().toLowerCase() });
+export const resetPasswordSchema = z.object({ token: z.string().min(32).max(256), password: z.string().min(8).max(72) });
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
