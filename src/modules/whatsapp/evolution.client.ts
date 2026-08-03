@@ -246,7 +246,7 @@ export class EvolutionClient {
             url: `${env.PUBLIC_API_URL.replace(/\/$/, "")}/webhooks/evolution/${accountId}`,
             webhookByEvents: false,
             webhookBase64: false,
-            events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+            events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE"],
             headers: { "x-evolution-webhook-secret": env.EVOLUTION_WEBHOOK_SECRET },
           },
         }),

@@ -13,11 +13,14 @@ export const updatePipelineStageSchema = z
   .object({
     name: z.string().trim().min(2).max(50).optional(),
     color: colorSchema.optional(),
+    isWon: z.boolean().optional(),
+    isLost: z.boolean().optional(),
   })
   .strict()
-  .refine((input) => input.name !== undefined || input.color !== undefined, {
+  .refine((input) => Object.values(input).some((value) => value !== undefined), {
     message: "At least one field must be provided",
-  });
+  })
+  .refine((input) => !(input.isWon && input.isLost), { message: "A stage cannot be won and lost at the same time" });
 
 export const pipelineStageParamsSchema = z
   .object({

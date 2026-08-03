@@ -26,6 +26,9 @@ const conversationSelect = {
       isConnected: true,
     },
   },
+  lead: {
+    select: { id: true, title: true, stage: { select: { id: true, name: true, color: true } } },
+  },
   messages: {
     select: {
       id: true,

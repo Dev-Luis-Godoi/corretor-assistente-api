@@ -13,6 +13,10 @@ export function leadRoutes(app: FastifyInstance) {
   app.addHook("preHandler", authMiddleware);
 
   app.post("/", leadController.create.bind(leadController));
+  app.post("/from-conversation/:conversationId", leadController.createFromConversation.bind(leadController));
   app.get("/", leadController.list.bind(leadController));
+  app.get("/:id", leadController.getById.bind(leadController));
+  app.patch("/:id", leadController.update.bind(leadController));
   app.patch("/:id/stage", leadController.updateStage.bind(leadController));
+  app.post("/:id/activities", leadController.addActivity.bind(leadController));
 }

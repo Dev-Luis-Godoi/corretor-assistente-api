@@ -15,6 +15,8 @@ const messageSelect = {
   sentAt: true,
   readAt: true,
   metadata: true,
+  deliveryStatus: true,
+  deliveredAt: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.MessageSelect;

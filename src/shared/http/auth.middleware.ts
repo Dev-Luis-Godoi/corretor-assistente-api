@@ -18,3 +18,15 @@ export function organizationAdminMiddleware(request: FastifyRequest) {
 
   return Promise.resolve();
 }
+
+export function organizationManagerMiddleware(request: FastifyRequest) {
+  if (request.user.role !== UserRole.OWNER && request.user.role !== UserRole.ADMIN) {
+    throw new AppError(
+      "Only organization administrators can perform this action",
+      403,
+      "ORGANIZATION_ADMIN_REQUIRED",
+    );
+  }
+
+  return Promise.resolve();
+}

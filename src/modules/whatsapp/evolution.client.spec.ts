@@ -31,7 +31,7 @@ describe("EvolutionClient", () => {
         url: `${env.PUBLIC_API_URL!.replace(/\/$/, "")}/webhooks/evolution/00000000-0000-4000-8000-000000000001`,
         webhookByEvents: false,
         webhookBase64: false,
-        events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+        events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE"],
         headers: { "x-evolution-webhook-secret": env.EVOLUTION_WEBHOOK_SECRET },
       },
     });

@@ -295,6 +295,34 @@ describe("application infrastructure", () => {
     expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
   });
 
+  it("protects task endpoints", async () => {
+    const response = await app.inject({ method: "GET", url: "/tasks" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates task creation", async () => {
+    const response = await app.inject({ method: "POST", url: "/tasks", headers: { cookie: await authenticatedCookie() }, payload: { title: "x", dueAt: "invalid" } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("protects automation endpoints", async () => {
+    const response = await app.inject({ method: "GET", url: "/automations/rules" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates message templates", async () => {
+    const response = await app.inject({ method: "POST", url: "/automations/templates", headers: { cookie: await authenticatedCookie() }, payload: { name: "x", content: "" } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates conversation conversion identifiers", async () => {
+    const response = await app.inject({ method: "POST", url: "/leads/from-conversation/not-a-uuid", headers: { cookie: await authenticatedCookie() }, payload: {} });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
   it("does not expose CORS credentials to an untrusted origin", async () => {
     const response = await app.inject({
       method: "GET",
