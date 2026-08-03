@@ -1,7 +1,11 @@
 import type { FastifyInstance } from "fastify";
 
 import { prisma } from "@/infra/database/prisma.js";
-import { authMiddleware } from "@/shared/http/auth.middleware.js";
+import {
+  authMiddleware,
+  organizationAdminMiddleware,
+} from "@/shared/http/auth.middleware.js";
+import { createRateLimit } from "@/shared/http/rate-limit.js";
 
 import { ConversationController } from "./conversation.controller.js";
 import { ConversationService } from "./conversation.service.js";
@@ -11,6 +15,7 @@ import { EvolutionAccountController } from "./evolution-account.controller.js";
 import { EvolutionAccountService } from "./evolution-account.service.js";
 
 export function whatsappRoutes(app: FastifyInstance) {
+  const accountCreationRateLimit = createRateLimit(5, 60 * 60_000);
   const conversationService = new ConversationService(prisma);
   const messageService = new MessageService(prisma);
   const conversationController = new ConversationController(conversationService);
@@ -26,5 +31,29 @@ export function whatsappRoutes(app: FastifyInstance) {
     messageController.listByConversation.bind(messageController),
   );
   app.post("/conversations/:conversationId/messages", messageController.sendText.bind(messageController));
-  app.post("/accounts/:accountId/configure-evolution", evolutionAccountController.configureWebhook.bind(evolutionAccountController));
+  app.get(
+    "/accounts",
+    { preHandler: organizationAdminMiddleware },
+    evolutionAccountController.list.bind(evolutionAccountController),
+  );
+  app.post(
+    "/accounts",
+    { preHandler: [organizationAdminMiddleware, accountCreationRateLimit] },
+    evolutionAccountController.create.bind(evolutionAccountController),
+  );
+  app.get(
+    "/accounts/:accountId/connect",
+    { preHandler: organizationAdminMiddleware },
+    evolutionAccountController.connect.bind(evolutionAccountController),
+  );
+  app.get(
+    "/accounts/:accountId/status",
+    { preHandler: organizationAdminMiddleware },
+    evolutionAccountController.status.bind(evolutionAccountController),
+  );
+  app.post(
+    "/accounts/:accountId/configure-evolution",
+    { preHandler: organizationAdminMiddleware },
+    evolutionAccountController.configureWebhook.bind(evolutionAccountController),
+  );
 }

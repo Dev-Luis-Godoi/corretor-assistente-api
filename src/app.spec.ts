@@ -9,13 +9,13 @@ afterAll(async () => {
   await app.close();
 });
 
-async function authenticatedCookie() {
+async function authenticatedCookie(role: UserRole = UserRole.OWNER) {
   await app.ready();
 
   const token = app.jwt.sign(
     {
       organizationId: "00000000-0000-4000-8000-000000000001",
-      role: UserRole.OWNER,
+      role,
     },
     {
       sub: "00000000-0000-4000-8000-000000000002",
@@ -179,6 +179,57 @@ describe("application infrastructure", () => {
   it("protects Evolution webhook configuration", async () => {
     const response = await app.inject({ method: "POST", url: "/whatsapp/accounts/00000000-0000-4000-8000-000000000001/configure-evolution" });
     expect(response.statusCode).toBe(401);
+  });
+
+  it("protects WhatsApp account endpoints", async () => {
+    const response = await app.inject({ method: "GET", url: "/whatsapp/accounts" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates WhatsApp account creation", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/whatsapp/accounts",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { name: "A", instanceName: "injected-instance" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates WhatsApp account identifiers", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/whatsapp/accounts/not-a-uuid/connect",
+      headers: { cookie: await authenticatedCookie() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("prevents agents from managing WhatsApp accounts", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/whatsapp/accounts",
+      headers: { cookie: await authenticatedCookie(UserRole.AGENT) },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ error: "WHATSAPP_ACCOUNT_FORBIDDEN" });
+  });
+
+  it("allows administrators to reach WhatsApp account validation", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/whatsapp/accounts",
+      headers: { cookie: await authenticatedCookie(UserRole.ADMIN) },
+      payload: { name: "A" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
   });
 
   it("protects pipeline endpoints", async () => {

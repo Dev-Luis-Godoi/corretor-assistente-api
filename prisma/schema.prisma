@@ -86,7 +86,7 @@ model PasswordResetToken {
 model WhatsappAccount {
   id           String  @id @default(uuid())
   name         String
-  phoneNumber  String
+  phoneNumber  String?
   externalId   String?
   instanceName String?
   isConnected  Boolean @default(false)
