@@ -19,4 +19,11 @@ export class ConversationController {
 
     return reply.send({ conversation });
   }
+
+  async markAsRead(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = conversationParamsSchema.parse(request.params);
+    await this.conversationService.markAsRead(request.user.organizationId, id);
+
+    return reply.status(204).send();
+  }
 }

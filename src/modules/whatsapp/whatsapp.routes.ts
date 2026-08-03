@@ -26,6 +26,10 @@ export function whatsappRoutes(app: FastifyInstance) {
 
   app.get("/conversations", conversationController.list.bind(conversationController));
   app.get("/conversations/:id", conversationController.getById.bind(conversationController));
+  app.patch(
+    "/conversations/:id/read",
+    conversationController.markAsRead.bind(conversationController),
+  );
   app.get(
     "/conversations/:conversationId/messages",
     messageController.listByConversation.bind(messageController),

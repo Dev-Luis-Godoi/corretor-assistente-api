@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client.js";
-import { Prisma } from "@/generated/prisma/client.js";
+import { MessageDirection, Prisma } from "@/generated/prisma/client.js";
 import { AppError } from "@/shared/errors/app-error.js";
 
 import type { ListConversationsQuery } from "./conversation.schemas.js";
@@ -107,5 +107,33 @@ export class ConversationService {
     }
 
     return conversation;
+  }
+
+  async markAsRead(organizationId: string, conversationId: string): Promise<void> {
+    const conversation = await this.database.conversation.findFirst({
+      where: { id: conversationId, organizationId },
+      select: { id: true },
+    });
+
+    if (!conversation) {
+      throw new AppError("Conversation not found", 404, "CONVERSATION_NOT_FOUND");
+    }
+
+    const readAt = new Date();
+    await this.database.$transaction([
+      this.database.conversation.update({
+        where: { id: conversation.id },
+        data: { unreadCount: 0 },
+      }),
+      this.database.message.updateMany({
+        where: {
+          organizationId,
+          conversationId: conversation.id,
+          direction: MessageDirection.INBOUND,
+          readAt: null,
+        },
+        data: { readAt },
+      }),
+    ]);
   }
 }

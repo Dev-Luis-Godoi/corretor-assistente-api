@@ -160,6 +160,17 @@ describe("application infrastructure", () => {
     expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
   });
 
+  it("validates conversation identifiers when marking messages as read", async () => {
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/whatsapp/conversations/not-a-uuid/read",
+      headers: { cookie: await authenticatedCookie() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
   it("validates message listing filters", async () => {
     const response = await app.inject({
       method: "GET",
