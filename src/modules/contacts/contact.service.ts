@@ -18,6 +18,10 @@ const contactSelect = {
   phone: true,
   email: true,
   avatarUrl: true,
+  origin: true,
+  consentStatus: true,
+  consentAt: true,
+  consentSource: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.ContactSelect;

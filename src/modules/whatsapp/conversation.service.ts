@@ -1,8 +1,9 @@
 import type { PrismaClient } from "@/generated/prisma/client.js";
 import { MessageDirection, Prisma } from "@/generated/prisma/client.js";
 import { AppError } from "@/shared/errors/app-error.js";
+import type { AuditService } from "@/shared/audit/audit.service.js";
 
-import type { ListConversationsQuery } from "./conversation.schemas.js";
+import type { ListConversationsQuery, UpdateConversationStatusInput } from "./conversation.schemas.js";
 
 const conversationSelect = {
   id: true,
@@ -27,7 +28,7 @@ const conversationSelect = {
     },
   },
   lead: {
-    select: { id: true, title: true, stage: { select: { id: true, name: true, color: true } } },
+    select: { id: true, title: true, assignedUser: { select: { id: true, name: true } }, stage: { select: { id: true, name: true, color: true } } },
   },
   messages: {
     select: {
@@ -58,13 +59,14 @@ interface ConversationList {
 }
 
 export class ConversationService {
-  constructor(private readonly database: PrismaClient) {}
+  constructor(private readonly database: PrismaClient, private readonly audit?: AuditService) {}
 
   async list(organizationId: string, query: ListConversationsQuery): Promise<ConversationList> {
     const where = {
       organizationId,
       status: query.status,
       whatsappAccountId: query.whatsappAccountId,
+      lead: query.assignedUserId ? { is: { assignedUserId: query.assignedUserId } } : undefined,
       contact: query.search
         ? {
             is: {
@@ -138,5 +140,21 @@ export class ConversationService {
         data: { readAt },
       }),
     ]);
+  }
+
+  async options(organizationId: string) {
+    const [accounts, users] = await Promise.all([
+      this.database.whatsappAccount.findMany({ where: { organizationId }, select: { id: true, name: true, phoneNumber: true }, orderBy: { name: "asc" } }),
+      this.database.user.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    ]);
+    return { accounts, users };
+  }
+
+  async updateStatus(organizationId: string, userId: string, conversationId: string, input: UpdateConversationStatusInput) {
+    const conversation = await this.database.conversation.findFirst({ where: { id: conversationId, organizationId }, select: { id: true, status: true } });
+    if (!conversation) throw new AppError("Conversation not found", 404, "CONVERSATION_NOT_FOUND");
+    const updated = await this.database.conversation.update({ where: { id: conversation.id }, data: { status: input.status }, select: conversationSelect });
+    await this.audit?.log({ organizationId, userId, action: "CONVERSATION_STATUS_UPDATED", entityType: "Conversation", entityId: conversation.id, metadata: { from: conversation.status, to: input.status } });
+    return updated;
   }
 }

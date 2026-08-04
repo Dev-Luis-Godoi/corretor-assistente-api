@@ -9,6 +9,7 @@ const phoneSchema = z
 const optionalNameSchema = z.string().trim().min(2).max(120).optional();
 const optionalEmailSchema = z.email().trim().toLowerCase().optional();
 const optionalAvatarUrlSchema = z.url().max(2_048).optional();
+const optionalOriginSchema = z.string().trim().min(2).max(120).optional();
 
 export const createContactSchema = z
   .object({
@@ -16,6 +17,7 @@ export const createContactSchema = z
     phone: phoneSchema,
     email: optionalEmailSchema,
     avatarUrl: optionalAvatarUrlSchema,
+    origin: optionalOriginSchema,
   })
   .strict();
 
@@ -25,6 +27,7 @@ export const updateContactSchema = z
     phone: phoneSchema.optional(),
     email: optionalEmailSchema.nullable(),
     avatarUrl: optionalAvatarUrlSchema.nullable(),
+    origin: optionalOriginSchema.nullable(),
   })
   .strict()
   .refine((input) => Object.values(input).some((value) => value !== undefined), {

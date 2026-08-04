@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client.js";
 import { AppError } from "@/shared/errors/app-error.js";
 import type { UpdateOrganizationInput } from "./schemas.js";
+import type { AuditService } from "@/shared/audit/audit.service.js";
 
 const organizationSelect = {
   id: true,
@@ -10,7 +11,7 @@ const organizationSelect = {
 } as const;
 
 export class OrganizationService {
-  constructor(private readonly database: PrismaClient) {}
+  constructor(private readonly database: PrismaClient,private readonly audit?:AuditService) {}
 
   async get(organizationId: string) {
     const organization = await this.database.organization.findUnique({
@@ -21,11 +22,13 @@ export class OrganizationService {
     return organization;
   }
 
-  update(organizationId: string, input: UpdateOrganizationInput) {
-    return this.database.organization.update({
+  async update(organizationId: string,userId:string, input: UpdateOrganizationInput) {
+    const organization=await this.database.organization.update({
       where: { id: organizationId },
       data: input,
       select: organizationSelect,
     });
+    await this.audit?.log({organizationId,userId,action:"ORGANIZATION_UPDATED",entityType:"Organization",entityId:organizationId,metadata:{name:input.name}});
+    return organization;
   }
 }

@@ -15,7 +15,7 @@ describe("OrganizationService", () => {
     const update = vi.fn().mockResolvedValue({ id: "org-1", name: "Novo nome" });
     const service = new OrganizationService({ organization: { update } } as never);
 
-    await service.update("org-1", { name: "Novo nome" });
+    await service.update("org-1", "user-1", { name: "Novo nome" });
 
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: "org-1" },

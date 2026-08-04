@@ -7,6 +7,7 @@ export const listConversationsQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
   status: z.enum(ConversationStatus).optional(),
   whatsappAccountId: z.uuid().optional(),
+  assignedUserId: z.uuid().optional(),
   search: z.string().trim().min(1).max(120).optional(),
 });
 
@@ -14,4 +15,9 @@ export const conversationParamsSchema = z.object({
   id: z.uuid(),
 });
 
+export const updateConversationStatusSchema = z.object({
+  status: z.enum(ConversationStatus),
+}).strict();
+
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
+export type UpdateConversationStatusInput = z.infer<typeof updateConversationStatusSchema>;

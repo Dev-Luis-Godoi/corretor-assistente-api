@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
-import { listMessagesParamsSchema, listMessagesQuerySchema, sendTextMessageSchema } from "./message.schemas.js";
+import { listMessagesParamsSchema, listMessagesQuerySchema, sendMediaMessageSchema, sendTextMessageSchema } from "./message.schemas.js";
 import type { MessageService } from "./message.service.js";
 
 export class MessageController {
@@ -21,6 +21,12 @@ export class MessageController {
   async sendText(request: FastifyRequest, reply: FastifyReply) {
     const { conversationId } = listMessagesParamsSchema.parse(request.params);
     const message = await this.messageService.sendText(request.user.organizationId, conversationId, sendTextMessageSchema.parse(request.body));
+    return reply.status(201).send({ message });
+  }
+
+  async sendMedia(request: FastifyRequest, reply: FastifyReply) {
+    const { conversationId } = listMessagesParamsSchema.parse(request.params);
+    const message = await this.messageService.sendMedia(request.user.organizationId, conversationId, sendMediaMessageSchema.parse(request.body));
     return reply.status(201).send({ message });
   }
 }

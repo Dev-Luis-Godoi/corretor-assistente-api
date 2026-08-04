@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
-import { conversationParamsSchema, listConversationsQuerySchema } from "./conversation.schemas.js";
+import { conversationParamsSchema, listConversationsQuerySchema, updateConversationStatusSchema } from "./conversation.schemas.js";
 import type { ConversationService } from "./conversation.service.js";
 
 export class ConversationController {
@@ -25,5 +25,15 @@ export class ConversationController {
     await this.conversationService.markAsRead(request.user.organizationId, id);
 
     return reply.status(204).send();
+  }
+
+  async options(request: FastifyRequest, reply: FastifyReply) {
+    return reply.send(await this.conversationService.options(request.user.organizationId));
+  }
+
+  async updateStatus(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = conversationParamsSchema.parse(request.params);
+    const conversation = await this.conversationService.updateStatus(request.user.organizationId, request.user.sub, id, updateConversationStatusSchema.parse(request.body));
+    return reply.send({ conversation });
   }
 }

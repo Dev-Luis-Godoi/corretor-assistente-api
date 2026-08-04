@@ -2,7 +2,7 @@ import { MessageDirection, MessageType, type PrismaClient } from "@/generated/pr
 import type { Prisma } from "@/generated/prisma/client.js";
 import { AppError } from "@/shared/errors/app-error.js";
 
-import type { ListMessagesQuery, SendTextMessageInput } from "./message.schemas.js";
+import type { ListMessagesQuery, SendMediaMessageInput, SendTextMessageInput } from "./message.schemas.js";
 import { EvolutionClient } from "./evolution.client.js";
 
 const messageSelect = {
@@ -85,6 +85,18 @@ export class MessageService {
     const result = await this.evolutionClient.sendText(conversation.whatsappAccount.instanceName, conversation.contact.phone, input.content);
     const sentAt = new Date();
     const message = await this.database.message.create({ data: { organizationId, conversationId, externalId: result.key?.id, direction: MessageDirection.OUTBOUND, type: MessageType.TEXT, content: input.content, sentAt }, select: messageSelect });
+    await this.database.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: sentAt } });
+    return message;
+  }
+
+  async sendMedia(organizationId: string, conversationId: string, input: SendMediaMessageInput) {
+    const conversation = await this.database.conversation.findFirst({ where: { id: conversationId, organizationId }, select: { id: true, contact: { select: { phone: true } }, whatsappAccount: { select: { instanceName: true, isConnected: true } } } });
+    if (!conversation) throw new AppError("Conversation not found", 404, "CONVERSATION_NOT_FOUND");
+    if (!conversation.whatsappAccount.instanceName || !conversation.whatsappAccount.isConnected) throw new AppError("WhatsApp account is not connected", 409, "WHATSAPP_NOT_CONNECTED");
+    const mediaType = input.type === MessageType.IMAGE ? "image" : input.type === MessageType.AUDIO ? "audio" : "document";
+    const result = await this.evolutionClient.sendMedia(conversation.whatsappAccount.instanceName, conversation.contact.phone, { mediaType, mimeType: input.mimeType, fileName: input.fileName, base64: input.base64, caption: input.caption });
+    const sentAt = new Date();
+    const message = await this.database.message.create({ data: { organizationId, conversationId, externalId: result.key?.id, direction: MessageDirection.OUTBOUND, type: input.type, content: input.caption ?? input.fileName, mediaUrl: `data:${input.mimeType};base64,${input.base64}`, metadata: { fileName: input.fileName, mimeType: input.mimeType }, sentAt }, select: messageSelect });
     await this.database.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: sentAt } });
     return message;
   }

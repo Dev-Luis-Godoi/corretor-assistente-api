@@ -227,6 +227,17 @@ export class EvolutionClient {
     return response.json() as Promise<EvolutionSendResponse>;
   }
 
+  async sendMedia(instanceName: string, number: string, input: { mediaType: "image" | "audio" | "document"; mimeType: string; fileName: string; base64: string; caption?: string }): Promise<EvolutionSendResponse> {
+    const normalizedNumber = number.replace(/\D/g, "");
+    if (normalizedNumber.length < 10 || normalizedNumber.length > 15) throw new AppError("Invalid destination number", 400, "INVALID_PHONE_NUMBER");
+    const response = await this.request(`/message/sendMedia/${encodeURIComponent(instanceName)}`, {
+      method: "POST",
+      body: JSON.stringify({ number: normalizedNumber, mediatype: input.mediaType, mimetype: input.mimeType, media: input.base64, fileName: input.fileName, caption: input.caption ?? "" }),
+    });
+    if (!response.ok) throw new AppError("WhatsApp provider rejected the attachment", 502, "EVOLUTION_MEDIA_SEND_FAILED");
+    return response.json() as Promise<EvolutionSendResponse>;
+  }
+
   async configureWebhook(instanceName: string, accountId: string) {
     if (!env.PUBLIC_API_URL || !env.EVOLUTION_WEBHOOK_SECRET) {
       throw new AppError(

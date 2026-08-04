@@ -12,6 +12,7 @@ export class OrganizationController {
   async update(request: FastifyRequest, reply: FastifyReply) {
     const organization = await this.service.update(
       request.user.organizationId,
+      request.user.sub,
       updateOrganizationSchema.parse(request.body),
     );
     return reply.send({ organization });
