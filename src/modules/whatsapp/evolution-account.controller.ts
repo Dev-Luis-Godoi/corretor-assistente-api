@@ -31,6 +31,16 @@ export class EvolutionAccountController {
     return reply.send(result);
   }
 
+  async disconnect(request: FastifyRequest, reply: FastifyReply) {
+    const { accountId } = evolutionAccountParamsSchema.parse(request.params);
+    await this.service.disconnect(
+      request.user.organizationId,
+      request.user.sub,
+      accountId,
+    );
+    return reply.status(204).send();
+  }
+
   async configureWebhook(request: FastifyRequest, reply: FastifyReply) {
     const { accountId } = evolutionAccountParamsSchema.parse(request.params);
     await this.service.configureWebhook(request.user.organizationId, accountId);

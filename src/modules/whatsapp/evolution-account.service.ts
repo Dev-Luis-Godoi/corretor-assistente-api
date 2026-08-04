@@ -95,6 +95,27 @@ export class EvolutionAccountService {
     await this.evolutionClient.configureWebhook(account.instanceName, account.id);
   }
 
+  async disconnect(organizationId: string, userId: string, accountId: string) {
+    const account = await this.getConfiguredAccount(organizationId, accountId);
+    await this.evolutionClient.logoutInstance(account.instanceName);
+
+    await this.database.$transaction([
+      this.database.whatsappAccount.update({
+        where: { id: account.id },
+        data: { isConnected: false },
+      }),
+      this.database.auditLog.create({
+        data: {
+          organizationId,
+          userId,
+          action: "WHATSAPP_ACCOUNT_DISCONNECTED",
+          entityType: "WHATSAPP_ACCOUNT",
+          entityId: account.id,
+        },
+      }),
+    ]);
+  }
+
   private async getConfiguredAccount(organizationId: string, accountId: string) {
     const account = await this.database.whatsappAccount.findFirst({
       where: { id: accountId, organizationId },

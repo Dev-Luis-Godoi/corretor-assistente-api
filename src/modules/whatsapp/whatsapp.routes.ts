@@ -60,6 +60,11 @@ export function whatsappRoutes(app: FastifyInstance) {
     { preHandler: organizationAdminMiddleware },
     evolutionAccountController.status.bind(evolutionAccountController),
   );
+  app.delete(
+    "/accounts/:accountId/connection",
+    { preHandler: organizationAdminMiddleware },
+    evolutionAccountController.disconnect.bind(evolutionAccountController),
+  );
   app.post(
     "/accounts/:accountId/configure-evolution",
     { preHandler: organizationAdminMiddleware },

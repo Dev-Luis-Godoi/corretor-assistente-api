@@ -220,6 +220,17 @@ describe("application infrastructure", () => {
     expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
   });
 
+  it("validates WhatsApp account identifiers when disconnecting", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/whatsapp/accounts/not-a-uuid/connection",
+      headers: { cookie: await authenticatedCookie() },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
   it("prevents agents from managing WhatsApp accounts", async () => {
     const response = await app.inject({
       method: "GET",

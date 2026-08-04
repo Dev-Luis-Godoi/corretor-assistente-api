@@ -68,4 +68,27 @@ describe("EvolutionClient", () => {
       phoneNumber: "5511999999999",
     });
   });
+
+  it("logs out an instance without deleting it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new EvolutionClient().logoutInstance("main instance");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      `${env.EVOLUTION_API_URL!.replace(/\/$/, "")}/instance/logout/main%20instance`,
+    );
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("treats an already disconnected instance as an idempotent success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 400 })),
+    );
+
+    await expect(new EvolutionClient().logoutInstance("main")).resolves.toBeUndefined();
+  });
 });

@@ -197,6 +197,23 @@ export class EvolutionClient {
     }
   }
 
+  async logoutInstance(instanceName: string): Promise<void> {
+    const response = await this.request(
+      `/instance/logout/${encodeURIComponent(instanceName)}`,
+      { method: "DELETE" },
+    );
+
+    // Evolution versions before 2.4 may return 400 when the instance is
+    // already logged out. Treat that state as an idempotent success.
+    if (!response.ok && response.status !== 400 && response.status !== 404) {
+      throw new AppError(
+        "Unable to disconnect WhatsApp instance",
+        502,
+        "EVOLUTION_INSTANCE_LOGOUT_FAILED",
+      );
+    }
+  }
+
   async sendText(
     instanceName: string,
     number: string,
