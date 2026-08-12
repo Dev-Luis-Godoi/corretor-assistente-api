@@ -23,7 +23,7 @@ export class ResendEmailService {
         to: [input.email],
         subject: "Redefinição de senha — Corretor Assistente",
         text: `Olá, ${input.name}. Redefina sua senha em até 30 minutos: ${resetUrl}. Se você não solicitou, ignore este e-mail.`,
-        html: `<div style="font-family:Arial,sans-serif;color:#111827"><h2>Redefinição de senha</h2><p>Olá, ${safeName}.</p><p>Use o botão abaixo para definir uma nova senha. O link expira em 30 minutos e só pode ser usado uma vez.</p><p><a href="${resetUrl}" style="display:inline-block;padding:12px 18px;background:#25D366;color:#062b14;text-decoration:none;border-radius:8px;font-weight:600">Redefinir senha</a></p><p>Se você não solicitou esta alteração, ignore este e-mail.</p></div>`,
+        html: `<div style="font-family:Arial,sans-serif;color:#111827"><h2>Redefinição de senha</h2><p>Olá, ${safeName}.</p><p>Use o botão abaixo para definir uma nova senha. O link expira em 30 minutos e só pode ser usado uma vez.</p><p><a href="${resetUrl}" style="display:inline-block;padding:12px 18px;background:#2563EB;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:600">Redefinir senha</a></p><p>Se você não solicitou esta alteração, ignore este e-mail.</p></div>`,
         tags: [{ name: "category", value: "password_reset" }],
       }),
     });
