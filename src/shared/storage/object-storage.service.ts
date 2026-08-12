@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -23,35 +24,76 @@ export const propertyPhotoLimits = {
   maxBytes: 6 * 1024 * 1024,
 };
 
-export class R2ObjectStorageService {
+interface StorageConfiguration {
+  endpoint: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+  publicBaseUrl?: string;
+  forcePathStyle: boolean;
+}
+
+function resolveConfiguration(): StorageConfiguration | null {
+  if (
+    env.OBJECT_STORAGE_ENDPOINT &&
+    env.OBJECT_STORAGE_ACCESS_KEY_ID &&
+    env.OBJECT_STORAGE_SECRET_ACCESS_KEY &&
+    env.OBJECT_STORAGE_BUCKET
+  ) {
+    return {
+      endpoint: env.OBJECT_STORAGE_ENDPOINT,
+      region: env.OBJECT_STORAGE_REGION,
+      accessKeyId: env.OBJECT_STORAGE_ACCESS_KEY_ID,
+      secretAccessKey: env.OBJECT_STORAGE_SECRET_ACCESS_KEY,
+      bucket: env.OBJECT_STORAGE_BUCKET,
+      publicBaseUrl: env.OBJECT_STORAGE_PUBLIC_BASE_URL,
+      forcePathStyle: env.OBJECT_STORAGE_FORCE_PATH_STYLE,
+    };
+  }
+
+  if (
+    env.R2_ACCOUNT_ID &&
+    env.R2_ACCESS_KEY_ID &&
+    env.R2_SECRET_ACCESS_KEY &&
+    env.R2_BUCKET &&
+    env.R2_PUBLIC_BASE_URL
+  ) {
+    return {
+      endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      region: "auto",
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      bucket: env.R2_BUCKET,
+      publicBaseUrl: env.R2_PUBLIC_BASE_URL,
+      forcePathStyle: false,
+    };
+  }
+
+  return null;
+}
+
+export class ObjectStorageService {
   private readonly client: S3Client | null;
-  private readonly bucket: string | null;
-  private readonly publicBaseUrl: string | null;
+  private readonly configuration: StorageConfiguration | null;
 
   constructor() {
-    const configured =
-      env.R2_ACCOUNT_ID &&
-      env.R2_ACCESS_KEY_ID &&
-      env.R2_SECRET_ACCESS_KEY &&
-      env.R2_BUCKET &&
-      env.R2_PUBLIC_BASE_URL;
-
-    this.bucket = env.R2_BUCKET ?? null;
-    this.publicBaseUrl = env.R2_PUBLIC_BASE_URL?.replace(/\/$/, "") ?? null;
-    this.client = configured
+    this.configuration = resolveConfiguration();
+    this.client = this.configuration
       ? new S3Client({
-          region: "auto",
-          endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          region: this.configuration.region,
+          endpoint: this.configuration.endpoint,
+          forcePathStyle: this.configuration.forcePathStyle,
           credentials: {
-            accessKeyId: env.R2_ACCESS_KEY_ID!,
-            secretAccessKey: env.R2_SECRET_ACCESS_KEY!,
+            accessKeyId: this.configuration.accessKeyId,
+            secretAccessKey: this.configuration.secretAccessKey,
           },
         })
       : null;
   }
 
   isConfigured() {
-    return Boolean(this.client && this.bucket && this.publicBaseUrl);
+    return Boolean(this.client && this.configuration);
   }
 
   async createPropertyPhotoUpload(input: {
@@ -82,8 +124,19 @@ export class R2ObjectStorageService {
     return { objectKey, uploadUrl, expiresInSeconds: 300 };
   }
 
-  async inspectPropertyPhoto(objectKey: string) {
+  async createReadUrl(objectKey: string) {
     const { client, bucket, publicBaseUrl } = this.requireConfiguration();
+    if (publicBaseUrl) {
+      const encodedKey = objectKey.split("/").map(encodeURIComponent).join("/");
+      return `${publicBaseUrl.replace(/\/$/, "")}/${encodedKey}`;
+    }
+    return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {
+      expiresIn: 3600,
+    });
+  }
+
+  async inspectPropertyPhoto(objectKey: string) {
+    const { client, bucket } = this.requireConfiguration();
     try {
       const object = await client.send(
         new HeadObjectCommand({ Bucket: bucket, Key: objectKey }),
@@ -98,9 +151,8 @@ export class R2ObjectStorageService {
         throw new AppError("Image is too large", 400, "PHOTO_TOO_LARGE");
       }
 
-      const encodedKey = objectKey.split("/").map(encodeURIComponent).join("/");
       return {
-        url: `${publicBaseUrl}/${encodedKey}`,
+        url: await this.createReadUrl(objectKey),
         mimeType,
         sizeBytes,
       };
@@ -111,14 +163,14 @@ export class R2ObjectStorageService {
   }
 
   async deleteObject(objectKey: string) {
-    if (!this.client || !this.bucket) return;
+    if (!this.client || !this.configuration) return;
     await this.client.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: objectKey }),
+      new DeleteObjectCommand({ Bucket: this.configuration.bucket, Key: objectKey }),
     );
   }
 
   private requireConfiguration() {
-    if (!this.client || !this.bucket || !this.publicBaseUrl) {
+    if (!this.client || !this.configuration) {
       throw new AppError(
         "Property photo storage is not configured",
         503,
@@ -127,8 +179,8 @@ export class R2ObjectStorageService {
     }
     return {
       client: this.client,
-      bucket: this.bucket,
-      publicBaseUrl: this.publicBaseUrl,
+      bucket: this.configuration.bucket,
+      publicBaseUrl: this.configuration.publicBaseUrl,
     };
   }
 }

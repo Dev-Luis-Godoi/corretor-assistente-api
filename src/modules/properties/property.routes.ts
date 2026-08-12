@@ -2,14 +2,14 @@ import type { FastifyInstance } from "fastify";
 
 import { prisma } from "@/infra/database/prisma.js";
 import { authMiddleware } from "@/shared/http/auth.middleware.js";
-import { R2ObjectStorageService } from "@/shared/storage/r2-object-storage.service.js";
+import { ObjectStorageService } from "@/shared/storage/object-storage.service.js";
 
 import { PropertyController } from "./property.controller.js";
 import { PropertyService } from "./property.service.js";
 
 export function propertyRoutes(app: FastifyInstance) {
   const controller = new PropertyController(
-    new PropertyService(prisma, new R2ObjectStorageService()),
+    new PropertyService(prisma, new ObjectStorageService()),
   );
   app.addHook("preHandler", authMiddleware);
   app.get("/", controller.list.bind(controller));

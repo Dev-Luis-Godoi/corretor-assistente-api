@@ -26,12 +26,35 @@ const envSchema = z.object({
   EVOLUTION_WEBHOOK_SECRET: z.string().min(32).optional(),
   RESEND_API_KEY: z.string().startsWith("re_").optional(),
   RESEND_FROM_EMAIL: z.email().optional(),
+  OBJECT_STORAGE_ENDPOINT: z.url().optional(),
+  OBJECT_STORAGE_REGION: z.string().min(1).default("auto"),
+  OBJECT_STORAGE_ACCESS_KEY_ID: z.string().min(8).optional(),
+  OBJECT_STORAGE_SECRET_ACCESS_KEY: z.string().min(16).optional(),
+  OBJECT_STORAGE_BUCKET: z.string().min(3).optional(),
+  OBJECT_STORAGE_PUBLIC_BASE_URL: z.url().optional(),
+  OBJECT_STORAGE_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
   R2_ACCOUNT_ID: z.string().min(20).optional(),
   R2_ACCESS_KEY_ID: z.string().min(20).optional(),
   R2_SECRET_ACCESS_KEY: z.string().min(32).optional(),
   R2_BUCKET: z.string().min(3).optional(),
   R2_PUBLIC_BASE_URL: z.url().optional(),
 }).superRefine((value, context) => {
+  const objectStorageValues = [
+    value.OBJECT_STORAGE_ENDPOINT,
+    value.OBJECT_STORAGE_ACCESS_KEY_ID,
+    value.OBJECT_STORAGE_SECRET_ACCESS_KEY,
+    value.OBJECT_STORAGE_BUCKET,
+  ];
+  if (objectStorageValues.some(Boolean) && !objectStorageValues.every(Boolean)) {
+    context.addIssue({
+      code: "custom",
+      path: ["OBJECT_STORAGE_ENDPOINT"],
+      message: "All object storage variables must be configured together",
+    });
+  }
   const r2Values = [
     value.R2_ACCOUNT_ID,
     value.R2_ACCESS_KEY_ID,

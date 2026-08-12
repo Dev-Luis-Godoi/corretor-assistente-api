@@ -2,8 +2,8 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client.js";
 import { AppError } from "@/shared/errors/app-error.js";
 import {
   propertyPhotoLimits,
-  type R2ObjectStorageService,
-} from "@/shared/storage/r2-object-storage.service.js";
+  type ObjectStorageService,
+} from "@/shared/storage/object-storage.service.js";
 
 import type {
   CreatePropertyInput,
@@ -42,6 +42,7 @@ const propertySelect = {
       position: true,
       mimeType: true,
       sizeBytes: true,
+      objectKey: true,
       createdAt: true,
     },
     orderBy: [{ position: "asc" as const }, { createdAt: "asc" as const }],
@@ -53,7 +54,7 @@ const propertySelect = {
 export class PropertyService {
   constructor(
     private readonly database: PrismaClient,
-    private readonly storage: R2ObjectStorageService,
+    private readonly storage: ObjectStorageService,
   ) {}
 
   storageStatus() {
@@ -61,6 +62,24 @@ export class PropertyService {
       configured: this.storage.isConfigured(),
       maxPhotos: propertyPhotoLimits.maxPhotos,
       maxBytes: propertyPhotoLimits.maxBytes,
+    };
+  }
+
+  private async serializeProperty<
+    T extends { photos: Array<{ objectKey: string; url: string }> },
+  >(
+    property: T,
+  ) {
+    return {
+      ...property,
+      photos: await Promise.all(
+        property.photos.map(async ({ objectKey, ...photo }) => ({
+          ...photo,
+          url: this.storage.isConfigured()
+            ? await this.storage.createReadUrl(objectKey)
+            : photo.url,
+        })),
+      ),
     };
   }
 
@@ -91,7 +110,7 @@ export class PropertyService {
       this.database.property.count({ where }),
     ]);
     return {
-      data,
+      data: await Promise.all(data.map((property) => this.serializeProperty(property))),
       meta: {
         page: query.page,
         limit: query.limit,
@@ -107,14 +126,15 @@ export class PropertyService {
       select: propertySelect,
     });
     if (!property) throw new AppError("Property not found", 404, "PROPERTY_NOT_FOUND");
-    return property;
+    return this.serializeProperty(property);
   }
 
-  create(organizationId: string, input: CreatePropertyInput) {
-    return this.database.property.create({
+  async create(organizationId: string, input: CreatePropertyInput) {
+    const property = await this.database.property.create({
       data: { ...input, organizationId },
       select: propertySelect,
     });
+    return this.serializeProperty(property);
   }
 
   async update(organizationId: string, propertyId: string, input: UpdatePropertyInput) {
@@ -123,11 +143,12 @@ export class PropertyService {
       select: { id: true },
     });
     if (!property) throw new AppError("Property not found", 404, "PROPERTY_NOT_FOUND");
-    return this.database.property.update({
+    const updated = await this.database.property.update({
       where: { id: property.id },
       data: input,
       select: propertySelect,
     });
+    return this.serializeProperty(updated);
   }
 
   async preparePhotoUpload(

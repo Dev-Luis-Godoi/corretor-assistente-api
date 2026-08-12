@@ -51,7 +51,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "platform-admin:create": "tsx src/scripts/create-platform-admin.ts"
+    "platform-admin:create": "tsx src/scripts/create-platform-admin.ts",
+    "storage:cors": "tsx src/scripts/configure-object-storage-cors.ts"
   },
   "keywords": [],
   "author": "",
