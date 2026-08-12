@@ -352,6 +352,33 @@ describe("application infrastructure", () => {
     expect(response.statusCode).toBe(401);
   });
 
+  it("protects property endpoints", async () => {
+    const response = await app.inject({ method: "GET", url: "/properties" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates property creation", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/properties",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { title: "A", price: -1, city: "X", state: "São Paulo" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("validates property photo upload identifiers", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/properties/not-a-uuid/photos/upload-url",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { fileName: "fachada.webp", mimeType: "image/webp", sizeBytes: 1024 },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
   it("validates task creation", async () => {
     const response = await app.inject({
       method: "POST",

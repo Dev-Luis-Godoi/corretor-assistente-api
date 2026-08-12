@@ -91,6 +91,28 @@ enum ConsentStatus {
   REVOKED
 }
 
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  LAND
+  COMMERCIAL
+  RURAL
+  OTHER
+}
+
+enum PropertyPurpose {
+  SALE
+  RENT
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  RENTED
+  INACTIVE
+}
+
 model Organization {
   id                String        @id @default(uuid())
   name              String
@@ -114,6 +136,7 @@ model Organization {
   auditLogs              AuditLog[]
   notificationDismissals NotificationDismissal[]
   platformAuditLogs      PlatformAuditLog[]
+  properties             Property[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -474,4 +497,57 @@ model NotificationDismissal {
 
   @@unique([userId, key])
   @@index([organizationId])
+}
+
+model Property {
+  id             String          @id @default(uuid())
+  title          String
+  reference      String?
+  description    String?
+  type           PropertyType
+  purpose        PropertyPurpose
+  status         PropertyStatus  @default(AVAILABLE)
+  price          Decimal         @db.Decimal(14, 2)
+  condominiumFee Decimal?        @db.Decimal(12, 2)
+  propertyTax    Decimal?        @db.Decimal(12, 2)
+  areaM2         Decimal?        @db.Decimal(10, 2)
+  bedrooms       Int             @default(0)
+  suites         Int             @default(0)
+  bathrooms      Int             @default(0)
+  parkingSpots   Int             @default(0)
+  address        String?
+  neighborhood   String?
+  city           String
+  state          String
+  zipCode        String?
+  amenities      String[]        @default([])
+  featured       Boolean         @default(false)
+
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  photos         PropertyPhoto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, reference])
+  @@index([organizationId, status])
+  @@index([organizationId, type, purpose])
+  @@index([organizationId, updatedAt])
+}
+
+model PropertyPhoto {
+  id        String @id @default(uuid())
+  url       String
+  objectKey String @unique
+  position  Int
+  mimeType  String
+  sizeBytes Int
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([propertyId, position])
 }

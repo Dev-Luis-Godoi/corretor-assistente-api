@@ -14,6 +14,7 @@ import { leadRoutes } from "@/modules/leads/routes.js";
 import { organizationRoutes } from "@/modules/organizations/routes.js";
 import { notificationRoutes } from "@/modules/notifications/routes.js";
 import { privacyRoutes } from "@/modules/privacy/routes.js";
+import { propertyRoutes } from "@/modules/properties/property.routes.js";
 import { pipelineRoutes } from "@/modules/pipelines/pipeline.routes.js";
 import { taskRoutes } from "@/modules/tasks/task.routes.js";
 import { userRoutes } from "@/modules/users/routes.js";
@@ -70,6 +71,7 @@ export function buildApp() {
   app.register(organizationRoutes, { prefix: "/organization" });
   app.register(notificationRoutes, { prefix: "/notifications" });
   app.register(privacyRoutes, { prefix: "/privacy" });
+  app.register(propertyRoutes, { prefix: "/properties" });
   app.register(pipelineRoutes, { prefix: "/pipeline" });
   app.register(taskRoutes, { prefix: "/tasks" });
   app.register(userRoutes, { prefix: "/users" });

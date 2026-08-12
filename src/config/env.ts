@@ -26,6 +26,26 @@ const envSchema = z.object({
   EVOLUTION_WEBHOOK_SECRET: z.string().min(32).optional(),
   RESEND_API_KEY: z.string().startsWith("re_").optional(),
   RESEND_FROM_EMAIL: z.email().optional(),
+  R2_ACCOUNT_ID: z.string().min(20).optional(),
+  R2_ACCESS_KEY_ID: z.string().min(20).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(32).optional(),
+  R2_BUCKET: z.string().min(3).optional(),
+  R2_PUBLIC_BASE_URL: z.url().optional(),
+}).superRefine((value, context) => {
+  const r2Values = [
+    value.R2_ACCOUNT_ID,
+    value.R2_ACCESS_KEY_ID,
+    value.R2_SECRET_ACCESS_KEY,
+    value.R2_BUCKET,
+    value.R2_PUBLIC_BASE_URL,
+  ];
+  if (r2Values.some(Boolean) && !r2Values.every(Boolean)) {
+    context.addIssue({
+      code: "custom",
+      path: ["R2_ACCOUNT_ID"],
+      message: "All R2 variables must be configured together",
+    });
+  }
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
