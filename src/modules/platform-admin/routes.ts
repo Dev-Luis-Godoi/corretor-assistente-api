@@ -24,6 +24,11 @@ export function platformAdminRoutes(app: FastifyInstance) {
     { preHandler: platformAdminMiddleware },
     controller.listAccounts.bind(controller),
   );
+  app.post(
+    "/accounts",
+    { preHandler: platformAdminMiddleware },
+    controller.createAccount.bind(controller),
+  );
   app.patch(
     "/accounts/:id/status",
     { preHandler: platformAdminMiddleware },

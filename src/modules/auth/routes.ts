@@ -16,12 +16,6 @@ export function authRoutes(app: FastifyInstance) {
   const authService = new AuthService(prisma, passwordService, new ResendEmailService());
   const authController = new AuthController(authService);
 
-  app.post(
-    "/register",
-    { preHandler: authRateLimit },
-    authController.register.bind(authController),
-  );
-
   app.post("/login", { preHandler: authRateLimit }, authController.login.bind(authController));
 
   app.post("/logout", authController.logout.bind(authController));

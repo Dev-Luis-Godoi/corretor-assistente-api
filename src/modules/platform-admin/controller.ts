@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { env } from "@/config/env.js";
 import {
+  createPlatformAccountSchema,
   platformAccountParamsSchema,
   platformAccountsQuerySchema,
   platformAdminLoginSchema,
@@ -51,6 +52,15 @@ export class PlatformAdminController {
     return reply.send(
       await this.service.listAccounts(platformAccountsQuerySchema.parse(request.query)),
     );
+  }
+
+  async createAccount(request: FastifyRequest, reply: FastifyReply) {
+    const result = await this.service.createAccount(
+      request.platformAdmin.sub,
+      createPlatformAccountSchema.parse(request.body),
+    );
+    reply.header("Cache-Control", "no-store");
+    return reply.status(201).send(result);
   }
 
   async updateStatus(request: FastifyRequest, reply: FastifyReply) {

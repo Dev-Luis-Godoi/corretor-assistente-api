@@ -1,7 +1,15 @@
+import { randomBytes } from "node:crypto";
+
 import { AccountStatus, Prisma, type PrismaClient } from "@/generated/prisma/client.js";
+import { UserRole } from "@/generated/prisma/enums.js";
+import { getDefaultPipelineStages } from "@/modules/pipelines/default-pipeline-stages.js";
 import type { PasswordService } from "@/shared/crypto/password.service.js";
 import { AppError } from "@/shared/errors/app-error.js";
-import type { PlatformAccountsQuery, PlatformAdminLoginInput } from "./schemas.js";
+import type {
+  CreatePlatformAccountInput,
+  PlatformAccountsQuery,
+  PlatformAdminLoginInput,
+} from "./schemas.js";
 
 const adminSelect = {
   id: true,
@@ -147,6 +155,63 @@ export class PlatformAdminService {
         totalPages: Math.max(1, Math.ceil(total / query.limit)),
       },
     };
+  }
+
+  async createAccount(adminId: string, input: CreatePlatformAccountInput) {
+    const existingUser = await this.database.user.findUnique({
+      where: { email: input.email },
+      select: { id: true },
+    });
+    if (existingUser) {
+      throw new AppError("Email is already in use", 409, "EMAIL_ALREADY_IN_USE");
+    }
+
+    const temporaryPassword = randomBytes(18).toString("base64url");
+    const passwordHash = await this.passwordService.hash(temporaryPassword);
+    try {
+      const organizationId = await this.database.$transaction(async (transaction) => {
+        const created = await transaction.organization.create({
+          data: {
+            name: `${input.name} · Meu espaço`,
+            status: input.status,
+            trialEndsAt:
+              input.status === AccountStatus.TRIAL
+                ? new Date(Date.now() + input.trialDays * 86_400_000)
+                : null,
+            users: {
+              create: {
+                name: input.name,
+                email: input.email,
+                passwordHash,
+                role: UserRole.OWNER,
+              },
+            },
+            stages: { create: getDefaultPipelineStages() },
+          },
+          select: accountSelect,
+        });
+        const targetUser = created.users[0];
+        await transaction.platformAuditLog.create({
+          data: {
+            adminId,
+            action: "ACCOUNT_CREATED",
+            targetOrganizationId: created.id,
+            targetUserId: targetUser?.id,
+            metadata: { status: input.status, trialDays: input.trialDays },
+          },
+        });
+        return created.id;
+      });
+      return {
+        account: await this.getAccount(organizationId),
+        credentials: { email: input.email, temporaryPassword },
+      };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new AppError("Email is already in use", 409, "EMAIL_ALREADY_IN_USE");
+      }
+      throw error;
+    }
   }
 
   async updateStatus(adminId: string, organizationId: string, status: AccountStatus) {

@@ -15,6 +15,13 @@ export const platformAccountsQuerySchema = z.object({
 
 export const platformAccountParamsSchema = z.object({ id: z.uuid() });
 export const updatePlatformAccountStatusSchema = z.object({ status: z.enum(AccountStatus) });
+export const createPlatformAccountSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.email().trim().toLowerCase(),
+  status: z.enum([AccountStatus.TRIAL, AccountStatus.ACTIVE]).default(AccountStatus.TRIAL),
+  trialDays: z.coerce.number().int().min(1).max(90).default(14),
+});
 
 export type PlatformAdminLoginInput = z.infer<typeof platformAdminLoginSchema>;
 export type PlatformAccountsQuery = z.infer<typeof platformAccountsQuerySchema>;
+export type CreatePlatformAccountInput = z.infer<typeof createPlatformAccountSchema>;

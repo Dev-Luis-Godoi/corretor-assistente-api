@@ -37,7 +37,7 @@ describe("application infrastructure", () => {
     expect(response.json()).toMatchObject({ status: "ok" });
   });
 
-  it("validates registration input", async () => {
+  it("does not expose public account registration", async () => {
     const response = await app.inject({
       method: "POST",
       url: "/auth/register",
@@ -48,8 +48,7 @@ describe("application infrastructure", () => {
       },
     });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+    expect(response.statusCode).toBe(404);
   });
 
   it("validates login input", async () => {
@@ -85,6 +84,15 @@ describe("application infrastructure", () => {
 
   it("does not accept a broker cookie in the platform administration", async () => {
     const response = await app.inject({ method: "GET", url: "/platform-admin/overview", headers: { cookie: await authenticatedCookie() } });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("protects platform account creation", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/platform-admin/accounts",
+      payload: { name: "Novo Corretor", email: "corretor@example.com" },
+    });
     expect(response.statusCode).toBe(401);
   });
 
