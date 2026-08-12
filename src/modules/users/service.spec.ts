@@ -44,6 +44,6 @@ describe("UserService", () => {
     });
 
     expect(hash).toHaveBeenCalledWith("new-password");
-    expect(update).toHaveBeenCalledWith({ where: { id: "user-1" }, data: { passwordHash: "new-hash" } });
+    expect(update).toHaveBeenCalledWith({ where: { id: "user-1" }, data: { passwordHash: "new-hash", sessionVersion: { increment: 1 } } });
   });
 });

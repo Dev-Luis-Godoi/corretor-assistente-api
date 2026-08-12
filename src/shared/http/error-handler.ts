@@ -1,7 +1,6 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 
-import { env } from "@/config/env.js";
 import { AppError } from "@/shared/errors/app-error.js";
 
 export function errorHandler(
@@ -32,7 +31,6 @@ export function errorHandler(
 
   return reply.status(statusCode).send({
     error: statusCode >= 500 ? "INTERNAL_SERVER_ERROR" : "REQUEST_ERROR",
-    message:
-      statusCode >= 500 && env.NODE_ENV === "production" ? "Internal server error" : error.message,
+    message: statusCode >= 500 ? "Internal server error" : error.message,
   });
 }

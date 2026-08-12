@@ -19,7 +19,15 @@ export class UserService {
 
   list(organizationId: string, search?: string) {
     return this.database.user.findMany({
-      where: { organizationId, OR: search ? [{ name: { contains: search, mode: Prisma.QueryMode.insensitive } }, { email: { contains: search, mode: Prisma.QueryMode.insensitive } }] : undefined },
+      where: {
+        organizationId,
+        OR: search
+          ? [
+              { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
+              { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
+            ]
+          : undefined,
+      },
       select: { id: true, name: true, role: true },
       orderBy: { name: "asc" },
     });
@@ -48,14 +56,19 @@ export class UserService {
     if (!user) throw new AppError("User not found", 404, "USER_NOT_FOUND");
 
     const matches = await this.passwordService.compare(input.currentPassword, user.passwordHash);
-    if (!matches) throw new AppError("Current password is incorrect", 400, "INVALID_CURRENT_PASSWORD");
+    if (!matches)
+      throw new AppError("Current password is incorrect", 400, "INVALID_CURRENT_PASSWORD");
 
     const repeatsCurrent = await this.passwordService.compare(input.newPassword, user.passwordHash);
-    if (repeatsCurrent) throw new AppError("New password must be different", 400, "PASSWORD_UNCHANGED");
+    if (repeatsCurrent)
+      throw new AppError("New password must be different", 400, "PASSWORD_UNCHANGED");
 
     await this.database.user.update({
       where: { id: userId },
-      data: { passwordHash: await this.passwordService.hash(input.newPassword) },
+      data: {
+        passwordHash: await this.passwordService.hash(input.newPassword),
+        sessionVersion: { increment: 1 },
+      },
     });
   }
 }

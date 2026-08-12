@@ -3,7 +3,12 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { env } from "@/config/env.js";
 
 import type { AuthUser } from "./auth.types.js";
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from "./schemas.js";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "./schemas.js";
 import type { AuthService } from "./service.js";
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -57,10 +62,12 @@ export class AuthController {
   }
 
   private async setAccessToken(reply: FastifyReply, user: AuthUser) {
-    const token = await reply.jwtSign(
+    const token = await reply.brokerJwtSign(
       {
         organizationId: user.organization.id,
         role: user.role,
+        sessionVersion: user.sessionVersion,
+        scope: "broker",
       },
       {
         sign: {

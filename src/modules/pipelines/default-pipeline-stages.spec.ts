@@ -54,7 +54,6 @@ describe("default pipeline stages", () => {
     const authService = new AuthService(database, passwordService);
 
     await authService.register({
-      organizationName: "Real Estate",
       name: "Owner",
       email: "owner@example.com",
       password: "strong-password",

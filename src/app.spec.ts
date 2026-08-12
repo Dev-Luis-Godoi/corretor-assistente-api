@@ -5,6 +5,10 @@ import { UserRole } from "@/generated/prisma/enums.js";
 
 const app = buildApp();
 
+app.get("/test-internal-error", () => {
+  throw new Error("database connection and filesystem details");
+});
+
 afterAll(async () => {
   await app.close();
 });
@@ -12,7 +16,7 @@ afterAll(async () => {
 async function authenticatedCookie(role: UserRole = UserRole.OWNER) {
   await app.ready();
 
-  const token = app.jwt.sign(
+  const token = app.jwt.broker.sign(
     {
       organizationId: "00000000-0000-4000-8000-000000000001",
       role,
@@ -38,7 +42,6 @@ describe("application infrastructure", () => {
       method: "POST",
       url: "/auth/register",
       payload: {
-        organizationName: "A",
         name: "A",
         email: "invalid-email",
         password: "short",
@@ -69,6 +72,22 @@ describe("application infrastructure", () => {
     expect(response.statusCode).toBe(401);
   });
 
+  it("protects the platform administration overview", async () => {
+    const response = await app.inject({ method: "GET", url: "/platform-admin/overview" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("validates the platform administrator login", async () => {
+    const response = await app.inject({ method: "POST", url: "/platform-admin/auth/login", payload: { email: "invalid", password: "" } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
+  });
+
+  it("does not accept a broker cookie in the platform administration", async () => {
+    const response = await app.inject({ method: "GET", url: "/platform-admin/overview", headers: { cookie: await authenticatedCookie() } });
+    expect(response.statusCode).toBe(401);
+  });
+
   it("clears the authentication cookie on logout", async () => {
     const response = await app.inject({ method: "POST", url: "/auth/logout" });
 
@@ -82,8 +101,22 @@ describe("application infrastructure", () => {
   });
 
   it("validates password reset input", async () => {
-    const response = await app.inject({ method: "POST", url: "/auth/reset-password", payload: { token: "short", password: "short" } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/auth/reset-password",
+      payload: { token: "short", password: "short" },
+    });
     expect(response.statusCode).toBe(400);
+  });
+
+  it("does not expose internal error details", async () => {
+    const response = await app.inject({ method: "GET", url: "/test-internal-error" });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({
+      error: "INTERNAL_SERVER_ERROR",
+      message: "Internal server error",
+    });
   });
 
   it("protects lead endpoints", async () => {
@@ -183,12 +216,20 @@ describe("application infrastructure", () => {
   });
 
   it("validates conversation identifier when sending a message", async () => {
-    const response = await app.inject({ method: "POST", url: "/whatsapp/conversations/not-a-uuid/messages", headers: { cookie: await authenticatedCookie() }, payload: { content: "Olá" } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/whatsapp/conversations/not-a-uuid/messages",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { content: "Olá" },
+    });
     expect(response.statusCode).toBe(400);
   });
 
   it("protects Evolution webhook configuration", async () => {
-    const response = await app.inject({ method: "POST", url: "/whatsapp/accounts/00000000-0000-4000-8000-000000000001/configure-evolution" });
+    const response = await app.inject({
+      method: "POST",
+      url: "/whatsapp/accounts/00000000-0000-4000-8000-000000000001/configure-evolution",
+    });
     expect(response.statusCode).toBe(401);
   });
 
@@ -312,7 +353,12 @@ describe("application infrastructure", () => {
   });
 
   it("validates task creation", async () => {
-    const response = await app.inject({ method: "POST", url: "/tasks", headers: { cookie: await authenticatedCookie() }, payload: { title: "x", dueAt: "invalid" } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/tasks",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { title: "x", dueAt: "invalid" },
+    });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
   });
@@ -323,13 +369,23 @@ describe("application infrastructure", () => {
   });
 
   it("validates message templates", async () => {
-    const response = await app.inject({ method: "POST", url: "/automations/templates", headers: { cookie: await authenticatedCookie() }, payload: { name: "x", content: "" } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/automations/templates",
+      headers: { cookie: await authenticatedCookie() },
+      payload: { name: "x", content: "" },
+    });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
   });
 
   it("validates conversation conversion identifiers", async () => {
-    const response = await app.inject({ method: "POST", url: "/leads/from-conversation/not-a-uuid", headers: { cookie: await authenticatedCookie() }, payload: {} });
+    const response = await app.inject({
+      method: "POST",
+      url: "/leads/from-conversation/not-a-uuid",
+      headers: { cookie: await authenticatedCookie() },
+      payload: {},
+    });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ error: "VALIDATION_ERROR" });
   });

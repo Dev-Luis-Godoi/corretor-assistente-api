@@ -6,6 +6,7 @@ import Fastify from "fastify";
 import { env } from "@/config/env.js";
 import { prisma } from "@/infra/database/prisma.js";
 import { authRoutes } from "@/modules/auth/routes.js";
+import { platformAdminRoutes } from "@/modules/platform-admin/routes.js";
 import { automationRoutes } from "@/modules/automations/automation.routes.js";
 import { contactRoutes } from "@/modules/contacts/contact.routes.js";
 import { dashboardRoutes } from "@/modules/dashboard/dashboard.routes.js";
@@ -35,8 +36,21 @@ export function buildApp() {
   app.register(cookie);
   app.register(jwt, {
     secret: env.JWT_SECRET,
+    namespace: "broker",
+    jwtVerify: "brokerJwtVerify",
+    jwtSign: "brokerJwtSign",
     cookie: {
       cookieName: "accessToken",
+      signed: false,
+    },
+  });
+  app.register(jwt, {
+    secret: env.ADMIN_JWT_SECRET,
+    namespace: "platformAdmin",
+    jwtVerify: "platformAdminJwtVerify",
+    jwtSign: "platformAdminJwtSign",
+    cookie: {
+      cookieName: "adminAccessToken",
       signed: false,
     },
   });
@@ -48,6 +62,7 @@ export function buildApp() {
   });
 
   app.register(authRoutes, { prefix: "/auth" });
+  app.register(platformAdminRoutes, { prefix: "/platform-admin" });
   app.register(automationRoutes, { prefix: "/automations" });
   app.register(contactRoutes, { prefix: "/contacts" });
   app.register(dashboardRoutes, { prefix: "/dashboard" });

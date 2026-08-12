@@ -18,6 +18,7 @@ const envSchema = z.object({
     ),
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must contain at least 32 characters"),
+  ADMIN_JWT_SECRET: z.string().min(32, "ADMIN_JWT_SECRET must contain at least 32 characters"),
   APP_URL: z.url().default("http://localhost:5173"),
   PUBLIC_API_URL: z.url().optional(),
   EVOLUTION_API_URL: z.url().optional(),

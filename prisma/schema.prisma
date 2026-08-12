@@ -13,6 +13,13 @@ enum UserRole {
   AGENT
 }
 
+enum AccountStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELED
+}
+
 enum ConversationStatus {
   OPEN
   CLOSED
@@ -85,9 +92,12 @@ enum ConsentStatus {
 }
 
 model Organization {
-  id                String @id @default(uuid())
+  id                String        @id @default(uuid())
   name              String
-  dataRetentionDays Int    @default(730)
+  dataRetentionDays Int           @default(730)
+  status            AccountStatus @default(TRIAL)
+  trialEndsAt       DateTime?
+  suspendedAt       DateTime?
 
   users                  User[]
   contacts               Contact[]
@@ -103,17 +113,20 @@ model Organization {
   automationRules        AutomationRule[]
   auditLogs              AuditLog[]
   notificationDismissals NotificationDismissal[]
+  platformAuditLogs      PlatformAuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         UserRole @default(AGENT)
+  id             String    @id @default(uuid())
+  name           String
+  email          String    @unique
+  passwordHash   String
+  role           UserRole  @default(AGENT)
+  sessionVersion Int       @default(0)
+  lastLoginAt    DateTime?
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -124,11 +137,41 @@ model User {
   passwordResetTokens    PasswordResetToken[]
   auditLogs              AuditLog[]
   notificationDismissals NotificationDismissal[]
+  platformAuditLogs      PlatformAuditLog[]      @relation("PlatformAuditTargetUser")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([organizationId])
+}
+
+model PlatformAdmin {
+  id             String             @id @default(uuid())
+  name           String
+  email          String             @unique
+  passwordHash   String
+  active         Boolean            @default(true)
+  sessionVersion Int                @default(0)
+  lastLoginAt    DateTime?
+  auditLogs      PlatformAuditLog[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model PlatformAuditLog {
+  id                   String        @id @default(uuid())
+  action               String
+  metadata             Json?
+  adminId              String
+  admin                PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  targetOrganizationId String?
+  targetOrganization   Organization? @relation(fields: [targetOrganizationId], references: [id], onDelete: SetNull)
+  targetUserId         String?
+  targetUser           User?         @relation("PlatformAuditTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  createdAt            DateTime      @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetOrganizationId, createdAt])
 }
 
 model PasswordResetToken {
