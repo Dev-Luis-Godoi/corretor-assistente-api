@@ -8,41 +8,37 @@ import {
 import type { RelationshipService } from "./relationship.service.js";
 export class RelationshipController {
   constructor(private readonly service: RelationshipService) {}
-  listOwners(request: FastifyRequest, reply: FastifyReply) {
+  async listOwners(request: FastifyRequest, reply: FastifyReply) {
     return reply.send(
-      this.service.listOwners(
+      await this.service.listOwners(
         request.user.organizationId,
         listRelationshipsQuerySchema.parse(request.query),
       ),
     );
   }
-  listClients(request: FastifyRequest, reply: FastifyReply) {
+  async listClients(request: FastifyRequest, reply: FastifyReply) {
     return reply.send(
-      this.service.listClients(
+      await this.service.listClients(
         request.user.organizationId,
         listRelationshipsQuerySchema.parse(request.query),
       ),
     );
   }
   async createOwner(request: FastifyRequest, reply: FastifyReply) {
-    return reply
-      .status(201)
-      .send({
-        owner: await this.service.createOwner(
-          request.user.organizationId,
-          createRelationshipSchema.parse(request.body),
-        ),
-      });
+    return reply.status(201).send({
+      owner: await this.service.createOwner(
+        request.user.organizationId,
+        createRelationshipSchema.parse(request.body),
+      ),
+    });
   }
   async createClient(request: FastifyRequest, reply: FastifyReply) {
-    return reply
-      .status(201)
-      .send({
-        client: await this.service.createClient(
-          request.user.organizationId,
-          createRelationshipSchema.parse(request.body),
-        ),
-      });
+    return reply.status(201).send({
+      client: await this.service.createClient(
+        request.user.organizationId,
+        createRelationshipSchema.parse(request.body),
+      ),
+    });
   }
   async updateOwner(request: FastifyRequest, reply: FastifyReply) {
     const { id } = relationshipParamsSchema.parse(request.params);
