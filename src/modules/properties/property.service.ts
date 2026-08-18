@@ -35,6 +35,7 @@ const propertySelect = {
   zipCode: true,
   amenities: true,
   featured: true,
+  owner: { select: { id: true, name: true } },
   photos: {
     select: {
       id: true,
@@ -65,9 +66,7 @@ export class PropertyService {
     };
   }
 
-  private async serializeProperty<
-    T extends { photos: Array<{ objectKey: string; url: string }> },
-  >(
+  private async serializeProperty<T extends { photos: Array<{ objectKey: string; url: string }> }>(
     property: T,
   ) {
     return {
@@ -89,6 +88,7 @@ export class PropertyService {
       status: query.status,
       type: query.type,
       purpose: query.purpose,
+      ownerId: query.ownerId,
       OR: query.search
         ? [
             { title: { contains: query.search, mode: "insensitive" } },
@@ -130,6 +130,7 @@ export class PropertyService {
   }
 
   async create(organizationId: string, input: CreatePropertyInput) {
+    await this.validateOwner(organizationId, input.ownerId);
     const property = await this.database.property.create({
       data: { ...input, organizationId },
       select: propertySelect,
@@ -138,6 +139,7 @@ export class PropertyService {
   }
 
   async update(organizationId: string, propertyId: string, input: UpdatePropertyInput) {
+    await this.validateOwner(organizationId, input.ownerId);
     const property = await this.database.property.findFirst({
       where: { id: propertyId, organizationId },
       select: { id: true },
@@ -149,6 +151,15 @@ export class PropertyService {
       select: propertySelect,
     });
     return this.serializeProperty(updated);
+  }
+
+  private async validateOwner(organizationId: string, ownerId?: string | null) {
+    if (!ownerId) return;
+    const owner = await this.database.owner.findFirst({
+      where: { id: ownerId, organizationId },
+      select: { id: true },
+    });
+    if (!owner) throw new AppError("Owner not found", 404, "OWNER_NOT_FOUND");
   }
 
   async preparePhotoUpload(

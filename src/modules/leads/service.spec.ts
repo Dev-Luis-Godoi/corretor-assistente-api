@@ -86,7 +86,13 @@ describe("LeadService tenant isolation", () => {
 
     expect(leadFindFirst).toHaveBeenCalledWith({
       where: { id: contactId, organizationId },
-      select: { id: true, stageId: true },
+      select: {
+        id: true,
+        stageId: true,
+        title: true,
+        notes: true,
+        contact: { select: { name: true, phone: true, email: true } },
+      },
     });
     expect(leadUpdate).not.toHaveBeenCalled();
   });

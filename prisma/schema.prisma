@@ -137,6 +137,8 @@ model Organization {
   notificationDismissals NotificationDismissal[]
   platformAuditLogs      PlatformAuditLog[]
   properties             Property[]
+  owners                 Owner[]
+  clients                Client[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -363,6 +365,7 @@ model Lead {
   activities    LeadActivity[]
   stageHistory  LeadStageHistory[]
   tasks         Task[]
+  client        Client?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -526,6 +529,8 @@ model Property {
   organizationId String
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   photos         PropertyPhoto[]
+  ownerId        String?
+  owner          Owner?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -534,6 +539,41 @@ model Property {
   @@index([organizationId, status])
   @@index([organizationId, type, purpose])
   @@index([organizationId, updatedAt])
+  @@index([ownerId])
+}
+
+model Owner {
+  id             String       @id @default(uuid())
+  name           String
+  phone          String?
+  email          String?
+  document       String?
+  notes          String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  properties     Property[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, name])
+}
+
+model Client {
+  id             String       @id @default(uuid())
+  name           String
+  phone          String?
+  email          String?
+  document       String?
+  notes          String?
+  origin         String       @default("MANUAL")
+  leadId         String?      @unique
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, name])
 }
 
 model PropertyPhoto {

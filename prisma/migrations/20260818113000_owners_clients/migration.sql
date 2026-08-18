@@ -1,0 +1,11 @@
+CREATE TABLE "Owner" ("id" TEXT NOT NULL,"name" TEXT NOT NULL,"phone" TEXT,"email" TEXT,"document" TEXT,"notes" TEXT,"organizationId" TEXT NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "Owner_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "Client" ("id" TEXT NOT NULL,"name" TEXT NOT NULL,"phone" TEXT,"email" TEXT,"document" TEXT,"notes" TEXT,"origin" TEXT NOT NULL DEFAULT 'MANUAL',"leadId" TEXT,"organizationId" TEXT NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "Client_pkey" PRIMARY KEY ("id"));
+ALTER TABLE "Property" ADD COLUMN "ownerId" TEXT;
+CREATE UNIQUE INDEX "Client_leadId_key" ON "Client"("leadId");
+CREATE INDEX "Owner_organizationId_name_idx" ON "Owner"("organizationId", "name");
+CREATE INDEX "Client_organizationId_name_idx" ON "Client"("organizationId", "name");
+CREATE INDEX "Property_ownerId_idx" ON "Property"("ownerId");
+ALTER TABLE "Owner" ADD CONSTRAINT "Owner_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Client" ADD CONSTRAINT "Client_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Client" ADD CONSTRAINT "Client_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Property" ADD CONSTRAINT "Property_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "Owner"("id") ON DELETE SET NULL ON UPDATE CASCADE;
