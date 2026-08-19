@@ -2,9 +2,11 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 
 import {
   confirmPropertyPhotoSchema,
+  confirmPropertyAuthorizationDocumentSchema,
   createPropertySchema,
   listPropertiesQuerySchema,
   preparePropertyPhotoSchema,
+  preparePropertyAuthorizationDocumentSchema,
   propertyParamsSchema,
   propertyPhotoParamsSchema,
   updatePropertySchema,
@@ -63,6 +65,30 @@ export class PropertyController {
         preparePropertyPhotoSchema.parse(request.body),
       ),
     );
+  }
+
+  async prepareAuthorizationDocumentUpload(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = propertyParamsSchema.parse(request.params);
+    return reply.send(await this.service.prepareAuthorizationDocumentUpload(
+      request.user.organizationId,
+      id,
+      preparePropertyAuthorizationDocumentSchema.parse(request.body),
+    ));
+  }
+
+  async confirmAuthorizationDocument(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = propertyParamsSchema.parse(request.params);
+    const input = confirmPropertyAuthorizationDocumentSchema.parse(request.body);
+    return reply.status(201).send({
+      property: await this.service.confirmAuthorizationDocument(request.user.organizationId, id, input),
+    });
+  }
+
+  async removeAuthorizationDocument(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = propertyParamsSchema.parse(request.params);
+    return reply.send({
+      property: await this.service.removeAuthorizationDocument(request.user.organizationId, id),
+    });
   }
 
   async confirmPhoto(request: FastifyRequest, reply: FastifyReply) {

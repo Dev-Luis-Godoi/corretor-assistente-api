@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PropertyPurpose, PropertyStatus, PropertyType } from "@/generated/prisma/enums.js";
+import { PropertyAuthorizationStatus, PropertyPurpose, PropertyStatus, PropertyType } from "@/generated/prisma/enums.js";
 
 const optionalText = (max: number) => z.string().trim().min(1).max(max).optional();
 const nullableText = (max: number) => z.string().trim().min(1).max(max).nullable().optional();
@@ -58,6 +58,12 @@ export const createPropertySchema = z
       .optional(),
     amenities: amenities.default([]),
     featured: z.boolean().default(false),
+    authorizationStatus: z.enum(PropertyAuthorizationStatus).default("PENDING"),
+    authorizationDate: z.coerce.date().optional(),
+    authorizationNotes: optionalText(2_000),
+    exclusive: z.boolean().default(false),
+    exclusivityStartAt: z.coerce.date().optional(),
+    exclusivityEndAt: z.coerce.date().optional(),
   })
   .strict();
 
@@ -90,6 +96,12 @@ export const updatePropertySchema = z
       .optional(),
     amenities: amenities.optional(),
     featured: z.boolean().optional(),
+    authorizationStatus: z.enum(PropertyAuthorizationStatus).optional(),
+    authorizationDate: z.coerce.date().nullable().optional(),
+    authorizationNotes: nullableText(2_000),
+    exclusive: z.boolean().optional(),
+    exclusivityStartAt: z.coerce.date().nullable().optional(),
+    exclusivityEndAt: z.coerce.date().nullable().optional(),
   })
   .strict()
   .refine((input) => Object.values(input).some((value) => value !== undefined), {
@@ -112,7 +124,19 @@ export const confirmPropertyPhotoSchema = z
   .object({ objectKey: z.string().min(20).max(500) })
   .strict();
 
+export const preparePropertyAuthorizationDocumentSchema = z.object({
+  fileName: z.string().trim().min(1).max(180),
+  mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "image/webp"]),
+  sizeBytes: z.coerce.number().int().positive().max(10 * 1024 * 1024),
+}).strict();
+
+export const confirmPropertyAuthorizationDocumentSchema = z.object({
+  objectKey: z.string().min(20).max(500),
+  fileName: z.string().trim().min(1).max(180),
+}).strict();
+
 export type ListPropertiesQuery = z.infer<typeof listPropertiesQuerySchema>;
 export type CreatePropertyInput = z.infer<typeof createPropertySchema>;
 export type UpdatePropertyInput = z.infer<typeof updatePropertySchema>;
 export type PreparePropertyPhotoInput = z.infer<typeof preparePropertyPhotoSchema>;
+export type PreparePropertyAuthorizationDocumentInput = z.infer<typeof preparePropertyAuthorizationDocumentSchema>;

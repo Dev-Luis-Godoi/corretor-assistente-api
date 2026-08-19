@@ -17,6 +17,9 @@ export function propertyRoutes(app: FastifyInstance) {
   app.post("/", controller.create.bind(controller));
   app.get("/:id", controller.getById.bind(controller));
   app.patch("/:id", controller.update.bind(controller));
+  app.post("/:id/authorization-document/upload-url", controller.prepareAuthorizationDocumentUpload.bind(controller));
+  app.post("/:id/authorization-document", controller.confirmAuthorizationDocument.bind(controller));
+  app.delete("/:id/authorization-document", controller.removeAuthorizationDocument.bind(controller));
   app.post("/:id/photos/upload-url", controller.preparePhotoUpload.bind(controller));
   app.post("/:id/photos", controller.confirmPhoto.bind(controller));
   app.patch("/:id/photos/:photoId/cover", controller.setCover.bind(controller));

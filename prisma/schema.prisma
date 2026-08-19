@@ -113,6 +113,12 @@ enum PropertyStatus {
   INACTIVE
 }
 
+enum PropertyAuthorizationStatus {
+  PENDING
+  AUTHORIZED
+  REFUSED
+}
+
 model Organization {
   id                String        @id @default(uuid())
   name              String
@@ -525,6 +531,16 @@ model Property {
   zipCode        String?
   amenities      String[]        @default([])
   featured       Boolean         @default(false)
+  authorizationStatus PropertyAuthorizationStatus @default(PENDING)
+  authorizationDate DateTime?
+  authorizationNotes String?
+  exclusive Boolean @default(false)
+  exclusivityStartAt DateTime?
+  exclusivityEndAt DateTime?
+  authorizationDocumentName String?
+  authorizationDocumentObjectKey String? @unique
+  authorizationDocumentMimeType String?
+  authorizationDocumentSizeBytes Int?
 
   organizationId String
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)

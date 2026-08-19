@@ -18,11 +18,24 @@ const extensionByMimeType: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+const allowedDocumentMimeTypes = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+const documentExtensionByMimeType: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 export const propertyPhotoLimits = {
   maxPhotos: 10,
   maxBytes: 6 * 1024 * 1024,
 };
+export const propertyAuthorizationDocumentLimits = { maxBytes: 10 * 1024 * 1024 };
 
 interface StorageConfiguration {
   endpoint: string;
@@ -133,6 +146,58 @@ export class ObjectStorageService {
     return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {
       expiresIn: 3600,
     });
+  }
+
+  async createPrivateReadUrl(objectKey: string) {
+    const { client, bucket } = this.requireConfiguration();
+    return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {
+      expiresIn: 900,
+    });
+  }
+
+  async createPropertyAuthorizationUpload(input: {
+    organizationId: string;
+    propertyId: string;
+    mimeType: string;
+    sizeBytes: number;
+  }) {
+    const { client, bucket } = this.requireConfiguration();
+    if (!allowedDocumentMimeTypes.has(input.mimeType)) {
+      throw new AppError("Unsupported document format", 400, "AUTHORIZATION_DOCUMENT_FORMAT_NOT_ALLOWED");
+    }
+    if (input.sizeBytes > propertyAuthorizationDocumentLimits.maxBytes) {
+      throw new AppError("Document is too large", 400, "AUTHORIZATION_DOCUMENT_TOO_LARGE");
+    }
+    const extension = documentExtensionByMimeType[input.mimeType] ?? "pdf";
+    const objectKey = `properties/${input.organizationId}/${input.propertyId}/authorization/${randomUUID()}.${extension}`;
+    const uploadUrl = await getSignedUrl(client, new PutObjectCommand({
+      Bucket: bucket,
+      Key: objectKey,
+      ContentType: input.mimeType,
+      ContentLength: input.sizeBytes,
+      CacheControl: "private, no-store",
+    }), { expiresIn: 300 });
+    return { objectKey, uploadUrl, expiresInSeconds: 300 };
+  }
+
+  async inspectPropertyAuthorizationDocument(objectKey: string) {
+    const { client, bucket } = this.requireConfiguration();
+    try {
+      const object = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: objectKey }));
+      const mimeType = object.ContentType ?? "";
+      const sizeBytes = object.ContentLength ?? 0;
+      if (!allowedDocumentMimeTypes.has(mimeType) || sizeBytes <= 0) {
+        throw new AppError("Invalid uploaded document", 400, "AUTHORIZATION_DOCUMENT_INVALID");
+      }
+      if (sizeBytes > propertyAuthorizationDocumentLimits.maxBytes) {
+        await this.deleteObject(objectKey);
+        throw new AppError("Document is too large", 400, "AUTHORIZATION_DOCUMENT_TOO_LARGE");
+      }
+      return { mimeType, sizeBytes };
+    } catch (caught) {
+      if (caught instanceof AppError) throw caught;
+      throw new AppError("Uploaded document was not found", 400, "AUTHORIZATION_DOCUMENT_NOT_FOUND");
+    }
   }
 
   async inspectPropertyPhoto(objectKey: string) {

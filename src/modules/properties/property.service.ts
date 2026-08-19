@@ -9,6 +9,7 @@ import type {
   CreatePropertyInput,
   ListPropertiesQuery,
   PreparePropertyPhotoInput,
+  PreparePropertyAuthorizationDocumentInput,
   UpdatePropertyInput,
 } from "./property.schemas.js";
 
@@ -35,6 +36,16 @@ const propertySelect = {
   zipCode: true,
   amenities: true,
   featured: true,
+  authorizationStatus: true,
+  authorizationDate: true,
+  authorizationNotes: true,
+  exclusive: true,
+  exclusivityStartAt: true,
+  exclusivityEndAt: true,
+  authorizationDocumentName: true,
+  authorizationDocumentObjectKey: true,
+  authorizationDocumentMimeType: true,
+  authorizationDocumentSizeBytes: true,
   owner: { select: { id: true, name: true } },
   photos: {
     select: {
@@ -66,11 +77,24 @@ export class PropertyService {
     };
   }
 
-  private async serializeProperty<T extends { photos: Array<{ objectKey: string; url: string }> }>(
+  private async serializeProperty<T extends {
+    photos: Array<{ objectKey: string; url: string }>;
+    authorizationDocumentObjectKey: string | null;
+    authorizationDocumentName: string | null;
+    authorizationDocumentMimeType: string | null;
+    authorizationDocumentSizeBytes: number | null;
+  }>(
     property: T,
   ) {
+    const { authorizationDocumentObjectKey, authorizationDocumentName, authorizationDocumentMimeType, authorizationDocumentSizeBytes, ...visible } = property;
     return {
-      ...property,
+      ...visible,
+      authorizationDocument: authorizationDocumentObjectKey ? {
+        name: authorizationDocumentName,
+        mimeType: authorizationDocumentMimeType,
+        sizeBytes: authorizationDocumentSizeBytes,
+        url: await this.storage.createPrivateReadUrl(authorizationDocumentObjectKey),
+      } : null,
       photos: await Promise.all(
         property.photos.map(async ({ objectKey, ...photo }) => ({
           ...photo,
@@ -181,6 +205,70 @@ export class PropertyService {
       mimeType: input.mimeType,
       sizeBytes: input.sizeBytes,
     });
+  }
+
+  async prepareAuthorizationDocumentUpload(
+    organizationId: string,
+    propertyId: string,
+    input: PreparePropertyAuthorizationDocumentInput,
+  ) {
+    const property = await this.database.property.findFirst({
+      where: { id: propertyId, organizationId },
+      select: { id: true },
+    });
+    if (!property) throw new AppError("Property not found", 404, "PROPERTY_NOT_FOUND");
+    return this.storage.createPropertyAuthorizationUpload({ organizationId, propertyId, ...input });
+  }
+
+  async confirmAuthorizationDocument(
+    organizationId: string,
+    propertyId: string,
+    input: { objectKey: string; fileName: string },
+  ) {
+    const expectedPrefix = `properties/${organizationId}/${propertyId}/authorization/`;
+    if (!input.objectKey.startsWith(expectedPrefix)) {
+      throw new AppError("Invalid document key", 400, "AUTHORIZATION_DOCUMENT_KEY_INVALID");
+    }
+    const property = await this.database.property.findFirst({
+      where: { id: propertyId, organizationId },
+      select: { id: true, authorizationDocumentObjectKey: true },
+    });
+    if (!property) throw new AppError("Property not found", 404, "PROPERTY_NOT_FOUND");
+    const uploaded = await this.storage.inspectPropertyAuthorizationDocument(input.objectKey);
+    await this.database.property.update({
+      where: { id: property.id },
+      data: {
+        authorizationDocumentName: input.fileName,
+        authorizationDocumentObjectKey: input.objectKey,
+        authorizationDocumentMimeType: uploaded.mimeType,
+        authorizationDocumentSizeBytes: uploaded.sizeBytes,
+      },
+    });
+    if (property.authorizationDocumentObjectKey && property.authorizationDocumentObjectKey !== input.objectKey) {
+      await this.storage.deleteObject(property.authorizationDocumentObjectKey);
+    }
+    return this.getById(organizationId, propertyId);
+  }
+
+  async removeAuthorizationDocument(organizationId: string, propertyId: string) {
+    const property = await this.database.property.findFirst({
+      where: { id: propertyId, organizationId },
+      select: { id: true, authorizationDocumentObjectKey: true },
+    });
+    if (!property) throw new AppError("Property not found", 404, "PROPERTY_NOT_FOUND");
+    if (property.authorizationDocumentObjectKey) {
+      await this.storage.deleteObject(property.authorizationDocumentObjectKey);
+    }
+    await this.database.property.update({
+      where: { id: property.id },
+      data: {
+        authorizationDocumentName: null,
+        authorizationDocumentObjectKey: null,
+        authorizationDocumentMimeType: null,
+        authorizationDocumentSizeBytes: null,
+      },
+    });
+    return this.getById(organizationId, propertyId);
   }
 
   async confirmPhoto(organizationId: string, propertyId: string, objectKey: string) {
